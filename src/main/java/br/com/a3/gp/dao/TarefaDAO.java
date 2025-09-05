@@ -9,30 +9,47 @@ import java.util.List;
 
 public class TarefaDAO {
 
+    /**
+     * Insere uma nova tarefa no banco de dados.
+     * Os campos `responsavel_id` e `data_previsao` são opcionais.
+     */
     public void inserir(Tarefa t) {
         String sql = "INSERT INTO tarefa(projeto_id,responsavel_id,titulo,descricao,status,prioridade,data_previsao) VALUES (?,?,?,?,?,?,?)";
         try (Connection con = Database.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
 
             ps.setInt(1, t.getProjetoId());
-            if (t.getResponsavelId() == null) ps.setNull(2, Types.INTEGER); else ps.setInt(2, t.getResponsavelId());
+            if (t.getResponsavelId() == null)
+                ps.setNull(2, Types.INTEGER);
+            else
+                ps.setInt(2, t.getResponsavelId());
+
             ps.setString(3, t.getTitulo());
             ps.setString(4, t.getDescricao());
             ps.setString(5, t.getStatus());
             ps.setString(6, t.getPrioridade());
             ps.setString(7, t.getDataPrevisao());
-            ps.executeUpdate();
+
+            ps.executeUpdate(); // Executa o INSERT
         } catch (SQLException e) {
             throw new RuntimeException("Erro ao inserir tarefa: " + e.getMessage(), e);
         }
     }
 
+    /**
+     * Atualiza os dados de uma tarefa existente.
+     * Todos os campos são sobrescritos com os valores fornecidos.
+     */
     public void atualizar(Tarefa t) {
         String sql = "UPDATE tarefa SET responsavel_id=?, titulo=?, descricao=?, status=?, prioridade=?, data_previsao=?, data_conclusao=? WHERE id=?";
         try (Connection con = Database.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
 
-            if (t.getResponsavelId() == null) ps.setNull(1, Types.INTEGER); else ps.setInt(1, t.getResponsavelId());
+            if (t.getResponsavelId() == null)
+                ps.setNull(1, Types.INTEGER);
+            else
+                ps.setInt(1, t.getResponsavelId());
+
             ps.setString(2, t.getTitulo());
             ps.setString(3, t.getDescricao());
             ps.setString(4, t.getStatus());
@@ -40,35 +57,47 @@ public class TarefaDAO {
             ps.setString(6, t.getDataPrevisao());
             ps.setString(7, t.getDataConclusao());
             ps.setInt(8, t.getId());
-            ps.executeUpdate();
+
+            ps.executeUpdate(); // Executa o UPDATE
         } catch (SQLException e) {
             throw new RuntimeException("Erro ao atualizar tarefa: " + e.getMessage(), e);
         }
     }
 
+    /**
+     * Exclui uma tarefa do banco de dados com base no seu ID.
+     */
     public void excluir(int id) {
         try (Connection con = Database.getConnection();
              PreparedStatement ps = con.prepareStatement("DELETE FROM tarefa WHERE id=?")) {
+
             ps.setInt(1, id);
-            ps.executeUpdate();
+            ps.executeUpdate(); // Executa o DELETE
         } catch (SQLException e) {
             throw new RuntimeException("Erro ao excluir tarefa: " + e.getMessage(), e);
         }
     }
 
+    /**
+     * Retorna todas as tarefas vinculadas a um determinado projeto.
+     * As tarefas vêm ordenadas do mais recente para o mais antigo (id DESC).
+     */
     public List<Tarefa> listarPorProjeto(int projetoId) {
         String sql = "SELECT id, projeto_id, responsavel_id, titulo, descricao, status, prioridade, data_criacao, data_previsao, data_conclusao FROM tarefa WHERE projeto_id=? ORDER BY id DESC";
         List<Tarefa> lista = new ArrayList<>();
         try (Connection con = Database.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
+
             ps.setInt(1, projetoId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
                     Tarefa t = new Tarefa();
                     t.setId(rs.getInt("id"));
                     t.setProjetoId(rs.getInt("projeto_id"));
+
                     int resp = rs.getInt("responsavel_id");
                     t.setResponsavelId(rs.wasNull() ? null : resp);
+
                     t.setTitulo(rs.getString("titulo"));
                     t.setDescricao(rs.getString("descricao"));
                     t.setStatus(rs.getString("status"));
@@ -76,6 +105,7 @@ public class TarefaDAO {
                     t.setDataCriacao(rs.getString("data_criacao"));
                     t.setDataPrevisao(rs.getString("data_previsao"));
                     t.setDataConclusao(rs.getString("data_conclusao"));
+
                     lista.add(t);
                 }
             }
@@ -85,65 +115,100 @@ public class TarefaDAO {
         return lista;
     }
 
+    /**
+     * Registra uma ação no histórico da tarefa, como enviar para QA, aprovar ou reprovar.
+     */
     private void historico(int tarefaId, Integer usuarioId, String acao, String obs) throws SQLException {
         try (Connection con = Database.getConnection();
              PreparedStatement ps = con.prepareStatement("INSERT INTO historico_tarefa(tarefa_id,usuario_id,acao,observacao) VALUES (?,?,?,?)")) {
+
             ps.setInt(1, tarefaId);
-            if (usuarioId == null) ps.setNull(2, Types.INTEGER); else ps.setInt(2, usuarioId);
+            if (usuarioId == null)
+                ps.setNull(2, Types.INTEGER);
+            else
+                ps.setInt(2, usuarioId);
+
             ps.setString(3, acao);
             ps.setString(4, obs);
-            ps.executeUpdate();
+
+            ps.executeUpdate(); // Executa o INSERT no histórico
         }
     }
 
+    /**
+     * Atualiza a tarefa de "em_execucao" para "em_qa".
+     * Só executa se o status atual for "em_execucao".
+     * Registra no histórico.
+     */
     public void enviarParaQA(int tarefaId, Integer usuarioId) {
         try (Connection con = Database.getConnection();
              PreparedStatement ps = con.prepareStatement("UPDATE tarefa SET status='em_qa' WHERE id=? AND status='em_execucao'")) {
+
             ps.setInt(1, tarefaId);
             int rows = ps.executeUpdate();
             if (rows == 0) throw new RuntimeException("Transição inválida. A tarefa precisa estar em_execucao.");
+
             historico(tarefaId, usuarioId, "enviar_para_qa", null);
         } catch (SQLException e) {
             throw new RuntimeException("Erro ao enviar para QA: " + e.getMessage(), e);
         }
     }
 
+    /**
+     * Atualiza a tarefa de "em_qa" para "aprovado" e grava a data de conclusão.
+     * Registra no histórico.
+     */
     public void aprovarQA(int tarefaId, Integer usuarioId) {
         try (Connection con = Database.getConnection();
              PreparedStatement ps = con.prepareStatement("UPDATE tarefa SET status='aprovado', data_conclusao=CURRENT_TIMESTAMP WHERE id=? AND status='em_qa'")) {
+
             ps.setInt(1, tarefaId);
             int rows = ps.executeUpdate();
             if (rows == 0) throw new RuntimeException("Transição inválida. A tarefa precisa estar em_qa.");
+
             historico(tarefaId, usuarioId, "aprovar_qa", null);
         } catch (SQLException e) {
             throw new RuntimeException("Erro ao aprovar QA: " + e.getMessage(), e);
         }
     }
 
+    /**
+     * Atualiza a tarefa de "em_qa" para "reprovado".
+     * O motivo da reprovação é salvo como observação no histórico.
+     */
     public void reprovarQA(int tarefaId, String observacao, Integer usuarioId) {
         try (Connection con = Database.getConnection();
              PreparedStatement ps = con.prepareStatement("UPDATE tarefa SET status='reprovado' WHERE id=? AND status='em_qa'")) {
+
             ps.setInt(1, tarefaId);
             int rows = ps.executeUpdate();
             if (rows == 0) throw new RuntimeException("Transição inválida. A tarefa precisa estar em_qa.");
+
             historico(tarefaId, usuarioId, "reprovar_qa", observacao);
         } catch (SQLException e) {
             throw new RuntimeException("Erro ao reprovar QA: " + e.getMessage(), e);
         }
     }
 
+    /**
+     * Busca uma tarefa específica pelo seu ID.
+     * Retorna todos os campos principais para exibição e edição.
+     */
     public Tarefa buscarPorId(int id) {
         String sql = "SELECT id, projeto_id, responsavel_id, titulo, descricao, status, prioridade, data_criacao, data_previsao, data_conclusao FROM tarefa WHERE id=?";
         try (Connection con = Database.getConnection();
              PreparedStatement ps = con.prepareStatement(sql)) {
+
             ps.setInt(1, id);
-            try(ResultSet rs = ps.executeQuery()) {
+            try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
                     Tarefa t = new Tarefa();
                     t.setId(rs.getInt("id"));
                     t.setProjetoId(rs.getInt("projeto_id"));
+
                     int resp = rs.getInt("responsavel_id");
                     t.setResponsavelId(rs.wasNull() ? null : resp);
+
                     t.setTitulo(rs.getString("titulo"));
                     t.setDescricao(rs.getString("descricao"));
                     t.setStatus(rs.getString("status"));
@@ -151,6 +216,7 @@ public class TarefaDAO {
                     t.setDataCriacao(rs.getString("data_criacao"));
                     t.setDataPrevisao(rs.getString("data_previsao"));
                     t.setDataConclusao(rs.getString("data_conclusao"));
+
                     return t;
                 }
             }

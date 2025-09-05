@@ -19,10 +19,12 @@ public class ProjetoListaJanela extends JFrame {
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
         setLayout(new BorderLayout(10,10));
 
-        modelo = new DefaultTableModel(new Object[]{"ID","Nome","Status","Ativo"}, 0) {
+        // Agora com colunas Gerente e Equipes
+        modelo = new DefaultTableModel(new Object[]{"ID","Nome","Status","Ativo","Gerente","Equipes"}, 0) {
             public boolean isCellEditable(int r, int c) { return false; }
         };
         tabela = new JTable(modelo);
+        tabela.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
         add(new JScrollPane(tabela), BorderLayout.CENTER);
 
         JPanel barra = new JPanel();
@@ -65,7 +67,7 @@ public class ProjetoListaJanela extends JFrame {
         });
 
         carregar();
-        setSize(780, 420);
+        setSize(1000, 480);
         setLocationRelativeTo(null);
     }
 
@@ -83,7 +85,11 @@ public class ProjetoListaJanela extends JFrame {
         List<Projeto> dados = dao.listarTodos();
         modelo.setRowCount(0);
         for (Projeto p : dados) {
-            modelo.addRow(new Object[]{ p.getId(), p.getNome(), p.getStatus(), p.isAtivo() });
+            String gerente = dao.buscarNomeGerente(p.getGerenteId());    // novo helper
+            String equipes = dao.listarNomesEquipes(p.getId());          // novo helper
+            modelo.addRow(new Object[]{
+                p.getId(), p.getNome(), p.getStatus(), p.isAtivo(), gerente, equipes
+            });
         }
     }
 }
