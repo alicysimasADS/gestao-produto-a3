@@ -144,7 +144,7 @@ public class SchemaInit {
             // -------------------------
 
             // Papéis padrão do sistema
-            String[] papeis = {"ADMIN","GERENTE_PROJETO","DESENVOLVEDOR","TESTADOR","QA"};
+            String[] papeis = {"ADMIN","GERENTE_PROJETO","DESENVOLVEDOR","CSM","QA"};
             try (PreparedStatement ps = con.prepareStatement("INSERT OR IGNORE INTO papel(nome) VALUES (?)")) {
                 for (String p : papeis) {
                     ps.setString(1, p);
