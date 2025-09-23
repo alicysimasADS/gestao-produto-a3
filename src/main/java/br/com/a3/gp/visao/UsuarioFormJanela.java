@@ -36,7 +36,7 @@ public class UsuarioFormJanela extends JDialog {
     private final DefaultListModel<String> modeloPapeis = new DefaultListModel<>();
     // Papéis disponíveis no sistema (deve bater com a tabela 'papel')
     private final List<String> papeisDisponiveis =
-            Arrays.asList("ADMIN","GERENTE_PROJETO","DESENVOLVEDOR","TESTADOR","QA");
+            Arrays.asList("ADMIN","GERENTE_PROJETO","DESENVOLVEDOR","CSM","QA");
 
     // Persistência
     private final UsuarioDAO dao = new UsuarioDAO();
@@ -194,7 +194,7 @@ public class UsuarioFormJanela extends JDialog {
         List<String> selecionados = listaPapeis.getSelectedValuesList();
 
         // Remove papéis conhecidos (evita duplicidade e facilita troca)
-        for (String p : Arrays.asList("ADMIN","GERENTE_PROJETO","DESENVOLVEDOR","TESTADOR","QA")) {
+        for (String p : Arrays.asList("ADMIN","GERENTE_PROJETO","DESENVOLVEDOR","CSM","QA")) {
             dao.removerPapel(usuario.getId(), p);
         }
         // Atribui apenas os escolhidos
